@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel — run history</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --surface: #11161d;
+    --surface-2: #171d26;
+    --border: #232b36;
+    --text: #d8dee7;
+    --text-dim: #7c8794;
+    --accent: #22bbf5;
+    --green: #3fbf7f;
+    --amber: #e0a339;
+    --mono: "SF Mono", "Consolas", "Menlo", monospace;
+    --sans: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    padding: 40px 24px 80px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 500;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .stats {
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    margin: 24px 0 32px;
+    border: 1px solid var(--border);
+  }
+  .stat {
+    flex: 1;
+    background: var(--surface);
+    padding: 16px 20px;
+  }
+  .stat .num { font-size: 26px; font-weight: 500; font-family: var(--mono); }
+  .stat .label { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .stat.fixed .num { color: var(--green); }
+  .stat.escalated .num { color: var(--amber); }
+  .stat.flaky .num { color: var(--accent); }
+
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .filter-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  .filter-btn.active {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  .runs { display: flex; flex-direction: column; gap: 1px; }
+  .run {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 90px 1fr auto;
+    gap: 16px;
+    align-items: start;
+  }
+  .run-status {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-align: center;
+    height: fit-content;
+  }
+  .run-status.auto_fixed { background: rgba(63,191,127,0.12); color: var(--green); }
+  .run-status.escalated { background: rgba(224,163,57,0.12); color: var(--amber); }
+  .run-status.flaky_retried { background: rgba(34,187,245,0.12); color: var(--accent); }
+  .run-status.unknown { background: rgba(124,135,148,0.12); color: var(--text-dim); }
+
+  .run-body .repo {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+  }
+  .run-body .summary {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    line-height: 1.5;
+    max-height: 3.2em;
+    overflow: hidden;
+  }
+  .run-meta {
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .run-meta a {
+    display: block;
+    margin-top: 6px;
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .run-meta a:hover { text-decoration: underline; }
+
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 13px;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Sentinel<span>_</span> run history</h1>
+    <div class="subtitle" id="repo-count"></div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="num" id="stat-total">0</div><div class="label">total runs</div></div>
+    <div class="stat fixed"><div class="num" id="stat-fixed">0</div><div class="label">auto-fixed</div></div>
+    <div class="stat escalated"><div class="num" id="stat-escalated">0</div><div class="label">escalated</div></div>
+    <div class="stat flaky"><div class="num" id="stat-flaky">0</div><div class="label">flaky retried</div></div>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all">all</button>
+    <button class="filter-btn" data-filter="auto_fixed">auto-fixed</button>
+    <button class="filter-btn" data-filter="escalated">escalated</button>
+    <button class="filter-btn" data-filter="flaky_retried">flaky</button>
+  </div>
+
+  <div class="runs" id="runs"></div>
+</div>
+
+<script>
+let allRuns = [];
+let watchedRepoCount = 0;
+let activeFilter = "all";
+
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, {
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+  });
+}
+
+function render() {
+  const container = document.getElementById("runs");
+  const filtered = activeFilter === "all"
+    ? allRuns
+    : allRuns.filter(r => r.classification === activeFilter);
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty">no runs match this filter yet</div>';
+    return;
+  }
+
+  container.innerHTML = filtered
+    .slice()
+    .reverse()
+    .map(r => `
+      <div class="run">
+        <div class="run-status ${r.classification}">${r.classification.replace('_', ' ')}</div>
+        <div class="run-body">
+          <div class="repo">${r.repo_name}</div>
+          <div class="summary">${(r.summary || "").replace(/</g, "&lt;")}</div>
+        </div>
+        <div class="run-meta">
+          ${fmtTime(r.timestamp)}
+          ${r.action_url ? `<a href="${r.action_url}" target="_blank">view →</a>` : ""}
+        </div>
+      </div>
+    `)
+    .join("");
+}
+
+function updateStats() {
+  document.getElementById("stat-total").textContent = allRuns.length;
+  document.getElementById("stat-fixed").textContent =
+    allRuns.filter(r => r.classification === "auto_fixed").length;
+  document.getElementById("stat-escalated").textContent =
+    allRuns.filter(r => r.classification === "escalated").length;
+  document.getElementById("stat-flaky").textContent =
+    allRuns.filter(r => r.classification === "flaky_retried").length;
+
+  const repos = new Set(allRuns.map(r => r.repo_name));
+  const count = watchedRepoCount || repos.size;
+  document.getElementById("repo-count").textContent =
+    `watching ${count} repo${count === 1 ? "" : "s"}`;
+}
+
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeFilter = btn.dataset.filter;
+    render();
+  });
+});
+
+fetch("runs.json")
+  .then(res => res.json())
+  .then(data => {
+    // Support both the new {watched_repos, runs} shape and the old flat-array shape
+    if (Array.isArray(data)) {
+      allRuns = data;
+      watchedRepoCount = new Set(data.map(r => r.repo_name)).size;
+    } else {
+      allRuns = data.runs || [];
+      watchedRepoCount = (data.watched_repos && data.watched_repos.length)
+        ? data.watched_repos.length
+        : new Set(allRuns.map(r => r.repo_name)).size;
+    }
+    updateStats();
+    render();
+  })
+  .catch(() => {
+    document.getElementById("runs").innerHTML =
+      '<div class="empty">no runs.json found yet — run agent_v2.py at least once</div>';
+  });
+</script>
+</body>
+</html>

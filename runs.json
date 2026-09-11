@@ -1,0 +1,36 @@
+{
+  "watched_repos": [
+    "idc-what-u-think/notebook",
+    "Firekid-is-him/velo-v2-private"
+  ],
+  "runs": [
+    {
+      "timestamp": "2026-09-09T10:01:21Z",
+      "repo_name": "idc-what-u-think/notebook",
+      "classification": "auto_fixed",
+      "summary": "Dependency version-solving failure. flutter_quill_extensions constraint updated from ^11.5.1 to ^11.0.0 as suggested by the pub resolver. Opened PR #1.",
+      "action_url": "https://github.com/idc-what-u-think/notebook/pull/1"
+    },
+    {
+      "timestamp": "2026-09-09T09:40:05Z",
+      "repo_name": "idc-what-u-think/notebook",
+      "classification": "escalated",
+      "summary": "API signature mismatch: onImagePickCallback and onVideoPickCallback no longer exist on QuillToolbarImageButtonOptions in flutter_quill_extensions 11.5.1. Requires a human decision between adapting code or pinning the dependency.",
+      "action_url": "https://github.com/idc-what-u-think/notebook/actions/runs/33383730203"
+    },
+    {
+      "timestamp": "2026-09-10T12:11:24.500276+00:00",
+      "repo_name": "idc-what-u-think/notebook",
+      "classification": "auto_fixed",
+      "summary": "### Triage Summary: `idc-what-u-think/notebook`\n\n* **Workflow Run:** [Build and Release APK](https://github.com/idc-what-u-think/notebook/actions/runs/33617193258)\n* **Triggering Commit:** `e94c5216682f45ef6aabed8cb53a5d964faf4712`\n* **Root Cause:** Version-solving failure during `flutter pub get`. The manifest required `flutter_quill_extensions: ^11.5.1`, which does not exist in the package registry. Pub explicitly suggested downgrading the constraint to `^11.0.0`.\n* **Flaky Check:** `check_fla",
+      "action_url": ""
+    },
+    {
+      "timestamp": "2026-09-11T06:59:52.156530+00:00",
+      "repo_name": "idc-what-u-think/notebook",
+      "classification": "auto_fixed",
+      "summary": "### Build Failure Triage Summary\n\n- **Repository:** `idc-what-u-think/notebook`\n- **Workflow:** Build and Release APK (Run ID: `34572063048`)\n- **Triggering Commit:** `349810ed01d1b34f121be8ed0467d6a91f32a01d`\n- **Root Cause:** Version-solving failure in `flutter pub get`. The dependency `flutter_quill_extensions ^11.5.1` does not match any available package versions.\n- **Flakiness Check:** Confirmed non-flaky (1 failure, 0 passes on this commit).\n- **Action Taken:** Opened a PR to update `pubsp",
+      "action_url": ""
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+name: Sentinel Auto-Triage
+
+# Fires automatically whenever ANY workflow in this repo finishes running.
+# We check the conclusion inside the job, rather than filtering here,
+# because workflow_run doesn't support filtering by conclusion directly.
+on:
+  workflow_run:
+    workflows: ["*"]
+    types: [completed]
+  # Lets you (or a judge testing this) trigger Sentinel manually from the
+  # GitHub Actions UI ("Run workflow" button), without needing an actual
+  # failure to occur first.
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Specific failed run ID to triage (optional — leave blank to check for the latest failure)"
+        required: false
+        type: string
+
+jobs:
+  triage:
+    # Runs when: (a) manually dispatched, always, or (b) a workflow_run
+    # event fired AND that run actually failed. Skips automatically on
+    # a workflow_run success, so nothing wasteful runs when builds pass.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Sentinel agent code
+        uses: actions/checkout@v4
+        with:
+          # Sentinel's code lives in a separate, public repo, under a
+          # different account than the repo being watched. Since it's
+          # public, no extra token is needed to check it out.
+          repository: Firekid-is-him/Sentinel
+          path: sentinel-agent
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: sentinel-agent
+        env:
+          PROVIDER: ${{ vars.SENTINEL_MODEL_PROVIDER || 'gemini' }}
+        run: |
+          pip install strands-agents strands-agents-tools PyGithub requests python-dotenv
+          if [ "$PROVIDER" = "bedrock" ]; then
+            pip install boto3
+          elif [ "$PROVIDER" = "anthropic" ]; then
+            pip install anthropic
+          elif [ "$PROVIDER" = "openai" ] || [ "$PROVIDER" = "groq" ]; then
+            pip install "strands-agents[openai]"
+          elif [ "$PROVIDER" = "ollama" ]; then
+            pip install "strands-agents[ollama]"
+          else
+            pip install "strands-agents[gemini]"
+          fi
+
+      - name: Run Sentinel against this repo's failure
+        working-directory: sentinel-agent
+        env:
+          # Defaults to gemini if the SENTINEL_MODEL_PROVIDER repo variable
+          # is not set. To use a different provider, add that variable
+          # under Settings > Secrets and variables > Actions > Variables,
+          # and add the matching secret below (ANTHROPIC_API_KEY, or AWS
+          # credentials for Bedrock, set as separate secrets and referenced
+          # the same way GEMINI_API_KEY is here).
+          SENTINEL_MODEL_PROVIDER: ${{ vars.SENTINEL_MODEL_PROVIDER || 'gemini' }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OLLAMA_HOST: ${{ vars.OLLAMA_HOST }}
+          # This repo watches only itself in this triggered context -
+          # Sentinel is told exactly which run just failed, so it
+          # doesn't need to search for it.
+          SENTINEL_REPO_1: ${{ github.repository }}
+          SENTINEL_TOKEN_1: ${{ secrets.GITHUB_TOKEN }}
+          # For automatic (workflow_run) triggers, this is always the
+          # exact run that just failed. For manual dispatch, this is
+          # whatever run_id the person typed in, or blank if they left
+          # it empty - in which case agent_v2.py falls back to searching
+          # for the latest failure itself.
+          SENTINEL_TRIGGERED_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || github.event.workflow_run.id }}
+        run: python3 agent_v2.py
+
+      - name: Upload run log as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-run-log
+          path: sentinel-agent/runs.json
+          retention-days: 30
