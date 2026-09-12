@@ -110,7 +110,14 @@ triaged. Do not repeat a tool call you have already made for the same repo.
    which can wrongly call a real, repeatable failure flaky.
 5. For each failing repo, classify the build failure using the rules above
    (flaky check first) and take exactly one action: rerun_workflow,
-   open_dependency_fix_pr, or escalate_to_human.
+   open_dependency_fix_pr, or escalate_to_human. After calling
+   open_dependency_fix_pr, open_doc_update_pr, or rerun_workflow, check
+   the tool's return value before reporting success. If it contains an
+   "error" key, your summary MUST say the action failed and state the
+   exact error returned. Never report a pull request or rerun as
+   completed unless the tool's return value actually contains a real
+   pr_number, html_url, or success confirmation. Reporting success when
+   the tool returned an error is worse than reporting a failure clearly.
 6. For each failing repo, only if its classification was NOT flaky, call
    check_doc_drift once on its commit. Act on it only if confident. Skip
    this step for any repo whose failure was flaky.
@@ -218,7 +225,9 @@ if __name__ == "__main__":
             result_text = str(result)
             break
         except Exception as e:
-            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+            error_str = str(e)
+            print(f"Attempt {attempt + 1} failed with: {type(e).__name__}: {error_str}")
+            if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
                 wait = 35 * (attempt + 1)
                 print(f"Rate limited, waiting {wait}s before retry "
                       f"({attempt + 1}/{max_retries})...")
