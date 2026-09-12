@@ -102,7 +102,12 @@ triaged. Do not repeat a tool call you have already made for the same repo.
      its run_id and commit info.
 2. For each failing repo, call get_failure_logs once, using its run_id.
 3. For each failing repo, call get_run_diff once, using its commit_sha.
-4. For each failing repo, call check_flaky_signal once, using its commit_sha.
+4. For each failing repo, call check_flaky_signal once, using its
+   commit_sha AND its workflow_name (from the same result that gave you
+   the run_id and commit_sha in step 1). Never omit workflow_name and
+   never guess it — using the wrong or no workflow name will count an
+   unrelated workflow's runs toward this commit's pass or fail count,
+   which can wrongly call a real, repeatable failure flaky.
 5. For each failing repo, classify the build failure using the rules above
    (flaky check first) and take exactly one action: rerun_workflow,
    open_dependency_fix_pr, or escalate_to_human.
