@@ -159,6 +159,8 @@ Then open the dashboard through that server, since it reads `runs.json` over HTT
 
 To use it, add the file to `.github/workflows/` in the repository you want watched, and add a `GEMINI_API_KEY` secret to that repository, since Gemini is the default provider for the triggered workflow. To use a different provider instead, add a `SENTINEL_MODEL_PROVIDER` repository variable and the matching secret, following the same table in Models configuration above.
 
+Note that this path does not need `SENTINEL_REPO_N` or `SENTINEL_TOKEN_N` set anywhere. The workflow already knows which repository it is running in through GitHub's own `github.repository` context, and it authenticates using the token GitHub provides automatically to every workflow run, scoped to that repository. The numbered `SENTINEL_REPO_N` and `SENTINEL_TOKEN_N` pairs in the Configure section above are only needed when running `agent_v2.py` yourself, outside of any specific repository's own Actions context, to check multiple repositories across different accounts in a single run.
+
 ## Project structure
 
 ```
