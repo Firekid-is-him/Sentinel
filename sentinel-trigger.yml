@@ -24,6 +24,16 @@ jobs:
     # a workflow_run success, so nothing wasteful runs when builds pass.
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
+    permissions:
+      # Required for Sentinel to open pull requests and push commits to
+      # a new branch in this repository. The default GITHUB_TOKEN cannot
+      # create pull requests unless this is explicitly declared here, in
+      # addition to "Allow GitHub Actions to create and approve pull
+      # requests" being enabled under the repository's Settings, Actions,
+      # General, Workflow permissions.
+      contents: write
+      pull-requests: write
+      actions: read
 
     steps:
       - name: Checkout Sentinel agent code
