@@ -17,24 +17,34 @@ from token_registry import get_client_for_repo
 
 
 @tool
-def check_flaky_signal(repo_name: str, commit_sha: str, workflow_name: str = None) -> dict:
+def check_flaky_signal(repo_name: str, commit_sha: str, workflow_name: str) -> dict:
     """
     Check whether the given commit has BOTH a passing and a failing run
-    for the same workflow, which is the standard signal for flakiness
+    for the SAME workflow, which is the standard signal for flakiness
     rather than a genuine regression. Looks at the most recent runs for
-    this commit only — not older commits, so this never confuses a real
+    this commit only, not older commits, so this never confuses a real
     fix (different commit) with a flaky flip (same commit).
+
+    workflow_name is required, not optional. A repo can have multiple
+    workflows (for example, the build workflow being watched, and
+    Sentinel's own trigger workflow). Mixing runs from different
+    workflows together would count an unrelated workflow's successful
+    run as a "pass" for a commit that never actually passed the build
+    being triaged, which would misclassify a real, repeatable failure
+    as flaky. Pass the exact workflow_name you got from get_latest_failed_run
+    or find_repos_with_failures for the run you are triaging.
 
     Args:
         repo_name: Repository in "owner/repo" format
         commit_sha: The commit SHA to check across multiple runs
-        workflow_name: Optional workflow name to narrow the check to one
-            workflow (recommended if the repo has multiple workflows)
+        workflow_name: The exact workflow name to restrict the check to.
+            Required. Use the workflow_name value from whichever tool
+            found this failure, not a guess.
 
     Returns:
         A dict with 'is_flaky' (bool), 'pass_count' and 'fail_count' for
-        this commit, and 'run_urls' for the runs found, so a human can
-        verify if they want to.
+        this commit within this one workflow, and 'run_urls' for the
+        runs found, so a human can verify if they want to.
     """
     gh = get_client_for_repo(repo_name)
     repo = gh.get_repo(repo_name)
@@ -45,7 +55,7 @@ def check_flaky_signal(repo_name: str, commit_sha: str, workflow_name: str = Non
     for run in all_runs:
         if run.head_sha != commit_sha:
             continue
-        if workflow_name and run.name != workflow_name:
+        if run.name != workflow_name:
             continue
         matching_runs.append(run)
         if len(matching_runs) >= 10:
