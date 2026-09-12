@@ -157,9 +157,17 @@ Then open the dashboard through that server, since it reads `runs.json` over HTT
 
 `sentinel-trigger.yml` is a GitHub Actions workflow you can add to any repository you want Sentinel to watch. It listens for that repository's own workflow runs and, when one fails, checks out Sentinel's code and runs it automatically, with the exact failing run already identified. It also supports manual triggering through the Actions tab, with an optional specific run ID.
 
-To use it, add the file to `.github/workflows/` in the repository you want watched, and add a `GEMINI_API_KEY` secret to that repository, since Gemini is the default provider for the triggered workflow. To use a different provider instead, add a `SENTINEL_MODEL_PROVIDER` repository variable and the matching secret, following the same table in Models configuration above.
+To use it, add the file to `.github/workflows/` in the repository you want watched, then add these in that repository's Settings, under Secrets and variables, then Actions:
 
-Note that this path does not need `SENTINEL_REPO_N` or `SENTINEL_TOKEN_N` set anywhere. The workflow already knows which repository it is running in through GitHub's own `github.repository` context, and it authenticates using the token GitHub provides automatically to every workflow run, scoped to that repository. The numbered `SENTINEL_REPO_N` and `SENTINEL_TOKEN_N` pairs in the Configure section above are only needed when running `agent_v2.py` yourself, outside of any specific repository's own Actions context, to check multiple repositories across different accounts in a single run.
+```
+GEMINI_API_KEY
+```
+
+That is the only one required. Gemini is the default provider for this workflow, and no GitHub token needs to be added, since GitHub provides one automatically to every workflow run, scoped to that repository.
+
+To use a different provider instead, add a `SENTINEL_MODEL_PROVIDER` variable set to `bedrock`, `anthropic`, `openai`, `groq`, or `ollama`, along with the matching secret for that provider from the table in Models configuration above.
+
+`SENTINEL_REPO_N` and `SENTINEL_TOKEN_N` from the Configure section are not used in this mode. Those only apply when running `agent_v2.py` yourself from your own machine.
 
 ## Project structure
 
