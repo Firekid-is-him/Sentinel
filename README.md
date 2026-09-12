@@ -84,6 +84,22 @@ Sentinel can watch several repositories at once, including repositories that liv
 - A GitHub personal access token (fine grained) with Actions read, Contents read and write, and Pull requests read and write permissions, for each account you want Sentinel to act on
 - Credentials for whichever model provider you choose, from the table above
 
+### Generating a GitHub token with the right permissions
+
+Sentinel needs a fine grained personal access token for each GitHub account it acts on, scoped to the specific permissions it uses.
+
+1. Go to `github.com/settings/tokens?type=beta` while signed into the account that owns the repository.
+2. Click "Generate new token".
+3. Under "Repository access", choose "Only select repositories" and pick the specific repository (or repositories) you want Sentinel to watch on this account.
+4. Under "Permissions", set the following, leaving everything else at "No access":
+   - Actions: Read-only
+   - Contents: Read and write
+   - Pull requests: Read and write
+   - Metadata: Read-only (this is usually selected automatically once the others are set)
+5. Click "Generate token" and copy it immediately. It is shown only once.
+
+Repeat this once per GitHub account you want Sentinel to watch, since a token only has access to the account it was generated under. Each token then goes into its own `SENTINEL_TOKEN_N` variable, paired with the matching `SENTINEL_REPO_N` for that account, as shown in the Configure section below.
+
 ### Install
 
 ```
