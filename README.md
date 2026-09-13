@@ -165,7 +165,7 @@ GEMINI_API_KEY
 
 That is the only one required. Gemini is the default provider for this workflow, and no GitHub token needs to be added, since GitHub provides one automatically to every workflow run, scoped to that repository.
 
-To use a different provider instead, add a `SENTINEL_MODEL_PROVIDER` variable set to `bedrock`, `anthropic`, `openai`, `groq`, or `ollama`, along with the matching secret for that provider from the table in Models configuration above.
+To use a different provider instead, add `SENTINEL_MODEL_PROVIDER` under the Variables tab specifically, not Secrets, set to `bedrock`, `anthropic`, `openai`, `groq`, or `ollama`. Provider name and model id are configuration, not sensitive data, so GitHub's own Variables tab is where they belong; only the actual API key or credentials for that provider go under Secrets, matching the table in Models configuration above. Putting `SENTINEL_MODEL_PROVIDER` under Secrets instead of Variables is a common mistake and will silently fall back to the Gemini default, since the workflow only reads that setting from Variables.
 
 `SENTINEL_REPO_N` and `SENTINEL_TOKEN_N` from the Configure section are not used in this mode. Those only apply when running `agent_v2.py` yourself from your own machine.
 
@@ -184,10 +184,6 @@ dashboard.html          Static run history viewer
 runs.json               Run history, written by agent_v2.py
 sentinel-trigger.yml    GitHub Actions workflow for automatic triggering
 ```
-
-## Limitations
-
-Sentinel currently only opens a dependency fix PR when the failing tool's own error message names the exact correct constraint. It does not attempt to guess a fix when the correct change is ambiguous, since a wrong automated fix is worse than an extra escalation. Documentation drift detection is a heuristic based on identifier overlap between a diff and the documentation file, not full static analysis, so it can miss subtler cases of staleness. The automatic trigger workflow checks out and installs Sentinel's dependencies on every run, which adds a short setup delay before triage begins.
 
 ## License
 
